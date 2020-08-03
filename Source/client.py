@@ -5,7 +5,7 @@ import tkinter as tk
 from gui import mainGUI
 from pygame import midi as m
 from time import sleep
-from helpers import mObject, saveHotkey, capHotkey, updateLabel, terminateOldListener, startListener
+from helpers import mObject, saveHotkey, capHotkey, updateLabel, terminateOldListener, startListener, parseDropdown
 
 
 class threadedClient:
@@ -30,58 +30,78 @@ class threadedClient:
     def workerTaskThread(self):
         while self.running:
             try:
-                ID = self.taskQueueIn.get()
+                ID, gMaster = self.taskQueueIn.get()
 
-                if ID is 1:
-                    updateLabel(self.gui.tlabel, self.gui.label_text, "Awaiting Midi input...")
+                if ID == 1:
+                    updateLabel(gMaster.tlabel, gMaster.label_text, "Awaiting Midi input...")
 
                     checkMob = self.getMidi()
                     if type(checkMob) is mObject:
-                        self.gui.mob = checkMob
+                        gMaster.mob = checkMob
                     else:
                         return
 
-                    if self.gui.mob.eType == 186:
+                    if gMaster.mob.eType == 11:
                         mEvent = "Encoder"
-                    elif self.gui.mob.eType == 154:
+                    elif gMaster.mob.eType == 9:
                         mEvent = "Note ON"
-                    elif self.gui.mob.eType == 138:
+                    elif gMaster.mob.eType == 8:
                         mEvent = "Note OFF"
                     else:
                         mEvent = "Unknown"
 
-                    msg = mEvent + " | ID: " + str(self.gui.mob.ID) + " | Value: " + str(self.gui.mob.val)
-                    updateLabel(self.gui.tlabel,
-                                self.gui.label_text,
+                    msg = mEvent + " | ID: " + str(gMaster.mob.ID) + " | Value: " + str(gMaster.mob.val)
+                    updateLabel(gMaster.tlabel,
+                                gMaster.label_text,
                                 msg,
                                 "Captured: " + msg)
-                    self.gui.toggleButtons(tk.NORMAL)
+                    gMaster.toggleButtons(tk.NORMAL)
 
-                elif ID is 2:
-                    updateLabel(self.gui.tlabel, self.gui.label_text, "Enter hotkey")
+                elif ID == 2:
+                    updateLabel(gMaster.tlabel, gMaster.label_text, "Enter hotkey")
                     hotkey = capHotkey()
 
-                    mode = self.gui.modeVar.get()
-                    saveHotkey(hotkey, mode, self.gui.mob)
+                    if gMaster.master.title() == "Edit Hotkeys":
+                        mode = parseDropdown(gMaster.modeVar.get(), gMaster.hotkeyVar.get())[0]
+                        saveHotkey(hotkey, mode, gMaster.mob)
+                        updateLabel(gMaster.tlabel, gMaster.label_text, "Mapped Midi input to: " + hotkey)
+                        gMaster.updateMode()
 
-                    updateLabel(self.gui.tlabel, self.gui.label_text, "Mapped last Midi input to: " + hotkey, 0)
-                    self.gui.toggleButtons(tk.NORMAL)
+                    else:
+                        mode = gMaster.modeVar.get()
+                        saveHotkey(hotkey, mode, gMaster.mob)
+                        updateLabel(gMaster.tlabel, gMaster.label_text, "Mapped last Midi input to: " + hotkey, 0)
 
-                elif ID is 3:
-                    updateLabel(self.gui.tlabel, self.gui.label_text, "Enter hotkey for decrease")
+                    gMaster.toggleButtons(tk.NORMAL)
+                    gMaster.master.after(2000, lambda: updateLabel(gMaster.tlabel, gMaster.label_text,
+                                                                   "Make a selection below"))
+
+                elif ID == 3:
+                    updateLabel(gMaster.tlabel, gMaster.label_text, "Enter hotkey for decrease")
                     dHotkey = capHotkey()
+                    sleep(0.25)
 
-                    updateLabel(self.gui.tlabel, self.gui.label_text, "Enter hotkey for increase")
+                    updateLabel(gMaster.tlabel, gMaster.label_text, "Enter hotkey for increase")
                     iHotkey = capHotkey()
 
-                    mode = self.gui.modeVar.get()
-                    saveHotkey((dHotkey, iHotkey), mode, self.gui.mob)
+                    if gMaster.master.title() == "Edit Hotkeys":
+                        mode = parseDropdown(gMaster.modeVar.get(), gMaster.hotkeyVar.get())[0]
+                        saveHotkey((dHotkey, iHotkey), mode, gMaster.mob)
+                        updateLabel(gMaster.tlabel,
+                                    gMaster.label_text,
+                                    "Mapped Midi input to decrease: " + dHotkey + " and increase: " + iHotkey)
+                        gMaster.updateMode()
 
-                    updateLabel(self.gui.tlabel,
-                                self.gui.label_text,
-                                "Mapped last Midi input to decrease: " + dHotkey + " and increase: " + iHotkey,
-                                0)
-                    self.gui.toggleButtons(tk.NORMAL)
+                    else:
+                        mode = gMaster.modeVar.get()
+                        saveHotkey((dHotkey, iHotkey), mode, gMaster.mob)
+                        updateLabel(gMaster.tlabel,
+                                    gMaster.label_text,
+                                    "Mapped last Midi input to decrease: " + dHotkey + " and increase: " + iHotkey,
+                                    0)
+                    gMaster.toggleButtons(tk.NORMAL)
+                    gMaster.master.after(2000, lambda: updateLabel(gMaster.tlabel, gMaster.label_text,
+                                                                   "Make a selection below"))
 
             except Queue.Empty:
                 sleep(0.1)
@@ -98,7 +118,7 @@ class threadedClient:
             return
 
         event = midIn.read(1)
-        mob = mObject(event[0][0][0], event[0][0][1], event[0][0][2])
+        mob = mObject(event[0][0][0] >> 4, event[0][0][1], event[0][0][2])
         midIn.close()
         return mob
 
@@ -106,7 +126,3 @@ class threadedClient:
         self.running = 0
         self.master.destroy()
         startListener()
-
-
-
-

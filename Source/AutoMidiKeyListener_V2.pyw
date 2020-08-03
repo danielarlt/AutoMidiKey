@@ -29,15 +29,22 @@ def connectMidi():
 def getActiveHotkeys():
     focused = getFocusedWindow()
     hotkeys = getHotkeys()
+    activeDict = dict()
 
     if focused in hotkeys.keys() and "Universal" in hotkeys.keys():
-        activeDict = {**hotkeys["Universal"], **hotkeys[focused]}
+        for key in hotkeys[focused].keys():
+            if key in hotkeys["Universal"].keys():
+                activeDict[key] = {**hotkeys["Universal"][key], **hotkeys[focused][key]}
+            else:
+                activeDict[key] = hotkeys[focused][key]
+
+        for key in (set(hotkeys["Universal"].keys()) - set(activeDict.keys())):
+            activeDict[key] = hotkeys["Universal"][key]
+
     elif "Universal" in hotkeys.keys():
         activeDict = hotkeys["Universal"]
     elif focused in hotkeys.keys():
         activeDict = hotkeys[focused]
-    else:
-        activeDict = dict()
 
     return activeDict
 
@@ -73,32 +80,32 @@ def intercept():
 def handler(mob):
     activeDict = getActiveHotkeys()
 
-    if mob.eType is 186 and '186' in activeDict.keys():
-        if str(mob.ID) in activeDict['186'].keys():
+    if mob.eType == 11 and '11' in activeDict.keys():
+        if str(mob.ID) in activeDict['11'].keys():
             if mob.ID in statics.keys():
-                if mob.val > statics.get(mob.ID) or mob.val is 127:
-                    keyboard.press_and_release(activeDict['186'][str(mob.ID)][1])
-                elif mob.val < statics.get(mob.ID) or mob.val is 0:
-                    keyboard.press_and_release(activeDict['186'][str(mob.ID)][0])
+                if mob.val > statics.get(mob.ID) or mob.val == 127:
+                    keyboard.press_and_release(activeDict['11'][str(mob.ID)][1])
+                elif mob.val < statics.get(mob.ID) or mob.val == 0:
+                    keyboard.press_and_release(activeDict['11'][str(mob.ID)][0])
                 statics.update({mob.ID: mob.val})
 
             elif mob.ID not in statics.keys():
                 statics.update({mob.ID: mob.val})
 
-    elif mob.eType is 154 and '154' in activeDict.keys():
-        if str(mob.ID) in activeDict['154'].keys():
-            keyboard.press_and_release(activeDict['154'][str(mob.ID)])
+    elif mob.eType == 9 and '9' in activeDict.keys():
+        if str(mob.ID) in activeDict['9'].keys():
+            keyboard.press_and_release(activeDict['9'][str(mob.ID)])
 
-    elif mob.eType is 138 and '138' in activeDict.keys():
-        if str(mob.ID) in activeDict['138'].keys():
-            keyboard.press_and_release(activeDict['138'][str(mob.ID)])
+    elif mob.eType == 8 and '8' in activeDict.keys():
+        if str(mob.ID) in activeDict['8'].keys():
+            keyboard.press_and_release(activeDict['8'][str(mob.ID)])
 
 
 def processQueue():
     while True:
         while not missed.empty():
             event = missed.get()
-            mob = mObject(event[0][0], event[0][1], event[0][2])
+            mob = mObject(event[0][0] >> 4, event[0][1], event[0][2])
             handler(mob)
         sleep(0.05)
 

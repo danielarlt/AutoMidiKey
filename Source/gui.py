@@ -149,7 +149,7 @@ class mainGUI:
 
     def editHotkeys(self):
         updateLabel(self.tlabel, self.label_text, "Make a selection in the popup")
-        editGUI()
+        editGUI(self.taskQueueOut)
 
     def updateMode(self):
         updateLabel(self.mlabel, self.mode_text, self.modeVar.get(), "Mode switch: " + self.modeVar.get())
@@ -164,15 +164,15 @@ class mainGUI:
 
     def getMidi(self):
         self.toggleButtons(tk.DISABLED)
-        self.taskQueueOut.put(1)
+        self.taskQueueOut.put((1, self))
 
     def mapKey(self):
         self.toggleButtons(tk.DISABLED)
-        if self.mob.eType is 154 or self.mob.eType is 138:
-            self.taskQueueOut.put(2)
+        if self.mob.eType is 9 or self.mob.eType is 8:
+            self.taskQueueOut.put((2, self))
 
-        elif self.mob.eType is 186:
-            self.taskQueueOut.put(3)
+        elif self.mob.eType is 11:
+            self.taskQueueOut.put((3, self))
 
     def delKey(self):
         hotkeys = getHotkeys()
@@ -182,7 +182,16 @@ class mainGUI:
 
         try:
             mode = self.modeVar.get()
-            hotkeys.pop(mode + " " + str(self.mob.eType) + " " + str(self.mob.ID))
+            hotkeys[mode][str(self.mob.eType)].pop(str(self.mob.ID))
+            if not bool(hotkeys[mode][str(self.mob.eType)]):
+                hotkeys[mode].pop(str(self.mob.eType))
+                if not bool(hotkeys[mode]):
+                    hotkeys.pop(mode)
+                    if not bool(hotkeys):
+                        remove("Data/hotkeys.json")
+
+            if bool(hotkeys):
+                saveHotkeys(hotkeys)
             updateLabel(self.tlabel, self.label_text, "Deleted last Midi input hotkey", 0)
         except KeyError:
             updateLabel(self.tlabel, self.label_text, "No hotkey to delete")
@@ -211,12 +220,13 @@ class mainGUI:
 
 
 class editGUI:
-    def __init__(self):
+    def __init__(self, taskQueueOut):
         self.master = tk.Toplevel()
         self.master.protocol("WM_DELETE_WINDOW", self.close)
         self.master.configure(bg="white")
         self.master.grab_set()
         self.master.wm_title("Edit Hotkeys")
+        self.taskQueueOut = taskQueueOut
 
         self.mob = mObject(0, 0, 0)
 
@@ -338,21 +348,12 @@ class editGUI:
 
     def edit(self):
         mode, self.mob = parseDropdown(self.modeVar.get(), self.hotkeyVar.get())
-        if self.mob.eType == 186:
-            updateLabel(self.tlabel, self.label_text, "Enter a hotkey for decrease")
-            dHotkey = capHotkey()
-            updateLabel(self.tlabel, self.label_text, "Enter a hotkey for increase")
-            iHotkey = capHotkey()
-            saveHotkey((dHotkey, iHotkey), mode, self.mob)
+        self.toggleButtons(tk.DISABLED)
+        if self.mob.eType == 9 or self.mob.eType == 8:
+            self.taskQueueOut.put((2, self))
 
-        else:
-            updateLabel(self.tlabel, self.label_text, "Enter a hotkey")
-            hotkey = capHotkey()
-            saveHotkey(hotkey, mode, self.mob)
-
-        self.updateMode()
-        updateLabel(self.tlabel, self.label_text, "Updated selected hotkey")
-        self.master.after(2000, lambda: updateLabel(self.tlabel, self.label_text, "Make a selection below"))
+        elif self.mob.eType == 11:
+            self.taskQueueOut.put((3, self))
 
     def delete(self):
         hotkeys = getHotkeys()
@@ -363,13 +364,31 @@ class editGUI:
             if not bool(hotkeys[mode]):
                 hotkeys.pop(mode)
                 if not bool(hotkeys):
-                    remove("hotkeys.json")
+                    remove("Data/hotkeys.json")
 
         if bool(hotkeys):
             saveHotkeys(hotkeys)
         self.updateMode()
         updateLabel(self.tlabel, self.label_text, "Deleted selected hotkey")
         self.master.after(2000, lambda: updateLabel(self.tlabel, self.label_text, "Make a selection below"))
+
+    def toggleButtons(self, state):
+        self.edit_button.configure(state=state)
+        self.del_button.configure(state=state)
+        self.remove_button.configure(state=state)
+
+        if state is tk.DISABLED:
+            self.edit_button.configure(bg="burlywood1")
+            self.del_button.configure(bg="burlywood1")
+            self.remove_button.configure(bg="burlywood1")
+        elif state is tk.NORMAL:
+            self.edit_button.configure(bg="royalblue3")
+            self.del_button.configure(bg="royalblue3")
+            self.remove_button.configure(bg="red3")
+
+        self.edit_button.update()
+        self.del_button.update()
+        self.remove_button.update()
 
     def close(self):
         self.master.grab_release()

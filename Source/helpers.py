@@ -70,11 +70,11 @@ def getHotkeyDisplay(curMode=None):
             continue
 
         for event, pair in hotkeys[mode].items():
-            if event == '186':
+            if event == '11':
                 mEvent = "Encoder"
-            elif event == '154':
+            elif event == '9':
                 mEvent = "Note ON"
-            elif event == '138':
+            elif event == '8':
                 mEvent = "Note OFF"
             else:
                 mEvent = "Unknown"
@@ -116,21 +116,21 @@ def parseDropdown(mode, info):
     if mode == "All":
         mode = mobInfo[0]
         if mobInfo[1] == "Encoder":
-            toReturn.eType = 186
+            toReturn.eType = 11
         elif mobInfo[1] == "Note ON":
-            toReturn.eType = 154
+            toReturn.eType = 9
         elif mobInfo[1] == "Note OFF":
-            toReturn.eType = 138
+            toReturn.eType = 8
 
         toReturn.ID = int(mobInfo[2])
 
     else:
         if mobInfo[0] == "Encoder":
-            toReturn.eType = 186
+            toReturn.eType = 11
         elif mobInfo[0] == "Note ON":
-            toReturn.eType = 154
+            toReturn.eType = 9
         elif mobInfo[0] == "Note OFF":
-            toReturn.eType = 138
+            toReturn.eType = 8
 
         toReturn.ID = int(mobInfo[1])
 
